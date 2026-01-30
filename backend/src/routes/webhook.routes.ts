@@ -350,7 +350,7 @@ router.post('/process-job', async (req: Request, res: Response) => {
     // Étape 2.5 : Créer application avec status 'processing'
     await logger.info('application_created', 'Création application (status: processing)', {
       userId: user_id,
-      jobOfferId: finalJobId
+      jobOfferId: finalJobId || undefined
     });
 
     const { data: draftApp, error: draftError } = await supabase
@@ -368,7 +368,7 @@ router.post('/process-job', async (req: Request, res: Response) => {
     if (draftError || !draftApp) {
       await logger.error('application_created', 'Erreur création application draft', {
         userId: user_id,
-        jobOfferId: finalJobId,
+        jobOfferId: finalJobId || undefined,
         metadata: { error: draftError?.message }
       });
       return res.status(500).json({
@@ -381,15 +381,15 @@ router.post('/process-job', async (req: Request, res: Response) => {
     
     await logger.success('application_created', `Application ${applicationId} créée`, {
       userId: user_id,
-      applicationId,
-      jobOfferId: finalJobId
+      applicationId: applicationId || undefined,
+      jobOfferId: finalJobId || undefined
     });
 
     // Étape 3 : Générer la lettre avec Groq (avec retry)
     await logger.info('ai_called', 'Appel Groq pour génération lettre', {
       userId: user_id,
-      applicationId,
-      jobOfferId: job_id,
+      applicationId: applicationId || undefined,
+      jobOfferId: job_id || undefined,
       metadata: { model: 'llama3-8b-8192' }
     });
 
@@ -402,7 +402,7 @@ router.post('/process-job', async (req: Request, res: Response) => {
         if (attempt > 1) {
           await logger.warning('retry_attempted', `Tentative ${attempt}/${maxRetries}`, {
             userId: user_id,
-            applicationId,
+            applicationId: applicationId || undefined,
             metadata: { attempt }
           });
           
@@ -421,7 +421,7 @@ router.post('/process-job', async (req: Request, res: Response) => {
         if (coverLetterResult.success && coverLetterResult.data) {
           await logger.success('ai_success', `Lettre générée (tentative ${attempt})`, {
             userId: user_id,
-            applicationId,
+            applicationId: applicationId || undefined,
             metadata: { 
               attempt,
               subject: coverLetterResult.data.subject,
@@ -436,7 +436,7 @@ router.post('/process-job', async (req: Request, res: Response) => {
         lastError = err.message;
         await logger.error('ai_failed', `Erreur Groq (tentative ${attempt})`, {
           userId: user_id,
-          applicationId,
+          applicationId: applicationId || undefined,
           metadata: { attempt, error: err.message },
           error: err
         });
@@ -461,7 +461,7 @@ router.post('/process-job', async (req: Request, res: Response) => {
 
       await logger.error('ai_failed', `Échec génération après ${maxRetries} tentatives`, {
         userId: user_id,
-        applicationId,
+        applicationId: applicationId || undefined,
         metadata: { error: lastError, retries: maxRetries }
       });
 
@@ -499,7 +499,7 @@ router.post('/process-job', async (req: Request, res: Response) => {
     if (updateError) {
       await logger.error('application_failed', 'Erreur mise à jour application', {
         userId: user_id,
-        applicationId,
+        applicationId: applicationId || undefined,
         metadata: { error: updateError.message }
       });
       
@@ -557,7 +557,7 @@ router.post('/process-job', async (req: Request, res: Response) => {
 
           await logger.success('email_sent', 'Email envoyé avec succès', {
             userId: user_id,
-            applicationId,
+            applicationId: applicationId || undefined,
             metadata: { 
               messageId: emailResult.messageId,
               to: jobOffer.contact_email || 'email non fourni'
@@ -568,7 +568,7 @@ router.post('/process-job', async (req: Request, res: Response) => {
           
           await logger.warning('email_failed', 'Échec envoi email', {
             userId: user_id,
-            applicationId,
+            applicationId: applicationId || undefined,
             metadata: { error: emailResult.error }
           });
 
@@ -584,7 +584,7 @@ router.post('/process-job', async (req: Request, res: Response) => {
         
         await logger.error('email_failed', 'Erreur envoi email', {
           userId: user_id,
-          applicationId,
+          applicationId: applicationId || undefined,
           metadata: { error: emailError.message },
           error: emailError
         });
@@ -618,8 +618,8 @@ router.post('/process-job', async (req: Request, res: Response) => {
 
     await logger.success('job_processed', 'Job traité avec succès', {
       userId: user_id,
-      applicationId,
-      jobOfferId: job_id,
+      applicationId: applicationId || undefined,
+      jobOfferId: job_id || undefined,
       metadata: { 
         status: finalStatus,
         email_sent: emailSent,
@@ -648,7 +648,7 @@ router.post('/process-job', async (req: Request, res: Response) => {
     await logger.error('job_received', 'Erreur globale dans le webhook', {
       userId: user_id,
       applicationId: applicationId || undefined,
-      jobOfferId: job_id,
+      jobOfferId: job_id || undefined,
       metadata: { error: error.message, stack: error.stack },
       error
     });
