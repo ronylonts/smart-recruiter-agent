@@ -17,12 +17,13 @@ type LogEvent =
   | 'application_created'
   | 'application_failed'
   | 'retry_attempted'
-  | 'status_changed';
+  | 'status_changed'
+  | 'job_processed';
 
 interface LogEntry {
-  userId?: string;
-  applicationId?: string;
-  jobOfferId?: string;
+  userId?: string | null;
+  applicationId?: string | null;
+  jobOfferId?: string | null;
   level: LogLevel;
   event: LogEvent;
   message: string;

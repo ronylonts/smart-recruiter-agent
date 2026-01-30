@@ -95,14 +95,14 @@ router.post('/new-job', async (req: Request, res: Response) => {
       });
     }
     const coverLetter = coverLetterResult.data;
-    console.log(`✅ Lettre générée (${coverLetter.split(' ').length} mots)`);
+    console.log(`✅ Lettre générée (${coverLetter.body.split(' ').length} mots)`);
 
     // Étape 5 : Envoyer l'email avec CV et lettre
     console.log('\n📧 Étape 5/6 - Envoi de l\'email...');
     const emailResult = await sendApplication(
       jobOffer,
       cvData.file_url,
-      coverLetter,
+      coverLetter.body,
       userProfile,
       recipient_email
     );
@@ -122,7 +122,7 @@ router.post('/new-job', async (req: Request, res: Response) => {
       user_id: user_id,
       cv_id: cvData.id,
       job_offer_id: job_offer_id,
-      cover_letter: coverLetter,
+      cover_letter: coverLetter.body,
       status: 'sent'
     });
 

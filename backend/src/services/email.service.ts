@@ -14,6 +14,7 @@ interface JobOffer {
 interface UserProfile {
   full_name: string;
   email: string;
+  phone?: string;
 }
 
 /**
