@@ -206,40 +206,69 @@ router.post('/process-job', async (req: Request, res: Response) => {
   console.log('\n🔔 Nouveau job reçu:', new Date().toISOString());
   console.log('Body:', JSON.stringify(req.body, null, 2));
 
-  await logger.info('job_received', `Nouveau job reçu pour user ${user_id}`, {
-    userId: user_id,
-    jobOfferId: job_id || 'création depuis détails',
-    metadata: { 
-      timestamp: new Date().toISOString(),
-      has_job_id: !!job_id,
-      has_details: !!(job_title && company && job_url)
-    }
+  // 🚀 PRIORITÉ 1 : Répondre IMMÉDIATEMENT à Make.com (200 OK)
+  res.status(200).json({
+    success: true,
+    message: 'Webhook reçu, traitement en cours...',
+    timestamp: new Date().toISOString()
   });
 
+  // Le traitement continue en arrière-plan (async)
+  (async () => {
+    await logger.info('job_received', `Nouveau job reçu pour user ${user_id}`, {
+      userId: user_id,
+      jobOfferId: job_id || 'création depuis détails',
+      metadata: { 
+        timestamp: new Date().toISOString(),
+        has_job_id: !!job_id,
+        has_details: !!(job_title && company && job_url)
+      }
+    }).catch(err => console.error('Log error (non-blocking):', err));
+
   try {
-    // Validation : user_id requis + soit job_id soit détails
+    // 🛡️ PRIORITÉ 2 : Valider les données reçues
     if (!user_id) {
+      console.error('❌ user_id manquant');
       await logger.error('job_received', 'user_id manquant', {
         metadata: { provided: req.body }
-      });
-      return res.status(400).json({
-        success: false,
-        error: 'user_id est requis'
-      });
+      }).catch(err => console.error('Log error (non-blocking):', err));
+      return; // Arrêter le traitement
     }
 
-    if (!job_id && (!job_title || !company || !job_url)) {
-      await logger.error('job_received', 'Paramètres manquants', {
+    // Vérifier si on a les données minimum
+    const hasValidData = job_id || (job_title && company && job_url);
+    
+    if (!hasValidData) {
+      console.error('❌ Données insuffisantes:', { job_id, job_title, company, job_url });
+      console.warn('⚠️ Adzuna a peut-être renvoyé un tableau vide - aucune offre trouvée');
+      
+      await logger.error('job_received', 'Paramètres manquants ou Adzuna sans résultats', {
         userId: user_id,
         metadata: { 
           provided: req.body,
-          error: 'Fournir soit job_id, soit (job_title + company + job_url)'
+          error: 'Fournir soit job_id, soit (job_title + company + job_url)',
+          possible_cause: 'Adzuna returned empty results array'
         }
-      });
-      return res.status(400).json({
-        success: false,
-        error: 'Fournir soit job_id, soit (job_title + company + job_url)'
-      });
+      }).catch(err => console.error('Log error (non-blocking):', err));
+      
+      // Créer une notification pour l'utilisateur
+      await createNotification({
+        user_id: user_id,
+        application_id: null,
+        message: `⚠️ Aucune offre d'emploi trouvée correspondant à votre profil pour cette recherche.`
+      }).catch(err => console.error('Notification error (non-blocking):', err));
+      
+      return; // Arrêter le traitement
+    }
+
+    // Validation des champs individuels (éviter les valeurs comme "0", null, undefined)
+    if (job_title && (job_title === '0' || job_title === 'null' || job_title === 'undefined')) {
+      console.error('❌ job_title contient une valeur invalide:', job_title);
+      return;
+    }
+    if (company && (company === '0' || company === 'null' || company === 'undefined')) {
+      console.error('❌ company contient une valeur invalide:', company);
+      return;
     }
 
     // Étape 1 : Récupérer l'utilisateur avec son premier CV (jointure)
@@ -268,14 +297,9 @@ router.post('/process-job', async (req: Request, res: Response) => {
         user_id: user_id,
         application_id: null,
         message: `❌ Erreur: Utilisateur ou CV introuvable pour le job ${job_id}`
-      });
+      }).catch(err => console.error('Notification error (non-blocking):', err));
       
-      // Retourner 200 à Make.com pour ne pas bloquer le scénario
-      return res.status(200).json({
-        success: false,
-        error: 'Utilisateur ou CV introuvable',
-        notified: true
-      });
+      return; // Arrêter le traitement (pas de res.status car déjà envoyé)
     }
 
     console.log(`✅ Utilisateur: ${userData.full_name}`);
@@ -296,14 +320,9 @@ router.post('/process-job', async (req: Request, res: Response) => {
           user_id: user_id,
           application_id: null,
           message: `❌ Erreur: Offre d'emploi ${job_id} introuvable`
-        });
+        }).catch(err => console.error('Notification error (non-blocking):', err));
         
-        // Retourner 200 à Make.com
-        return res.status(200).json({
-          success: false,
-          error: 'Offre d\'emploi introuvable',
-          notified: true
-        });
+        return; // Arrêter le traitement
       }
       jobOffer = jobResult.data;
       finalJobId = jobOffer.id;
@@ -333,13 +352,9 @@ router.post('/process-job', async (req: Request, res: Response) => {
           user_id: user_id,
           application_id: null,
           message: `❌ Erreur: Impossible de créer l'offre "${job_title}" chez ${company}`
-        });
+        }).catch(err => console.error('Notification error (non-blocking):', err));
         
-        return res.status(200).json({
-          success: false,
-          error: 'Erreur création/récupération offre',
-          notified: true
-        });
+        return; // Arrêter le traitement
       }
 
       jobOffer = jobResult.data;
@@ -370,11 +385,8 @@ router.post('/process-job', async (req: Request, res: Response) => {
         userId: user_id,
         jobOfferId: finalJobId || undefined,
         metadata: { error: draftError?.message }
-      });
-      return res.status(500).json({
-        success: false,
-        error: 'Erreur création application'
-      });
+      }).catch(err => console.error('Log error (non-blocking):', err));
+      return; // Arrêter le traitement
     }
 
     applicationId = draftApp.id;
@@ -463,23 +475,16 @@ router.post('/process-job', async (req: Request, res: Response) => {
         userId: user_id,
         applicationId: applicationId || undefined,
         metadata: { error: lastError, retries: maxRetries }
-      });
+      }).catch(err => console.error('Log error (non-blocking):', err));
 
       // Créer notification pour informer l'utilisateur
       await createNotification({
         user_id: user_id,
         application_id: applicationId,
         message: `❌ Échec de génération de lettre pour l'offre "${jobOffer.title}" après ${maxRetries} tentatives. Erreur: ${lastError}`
-      });
+      }).catch(err => console.error('Notification error (non-blocking):', err));
 
-      // Retourner 200 à Make.com pour ne pas bloquer le scénario
-      return res.status(200).json({
-        success: false,
-        error: `Erreur génération lettre après ${maxRetries} tentatives: ${lastError}`,
-        application_id: applicationId,
-        status: 'failed',
-        notified: true
-      });
+      return; // Arrêter le traitement
     }
 
     const coverLetter = coverLetterResult.data;
@@ -501,22 +506,16 @@ router.post('/process-job', async (req: Request, res: Response) => {
         userId: user_id,
         applicationId: applicationId || undefined,
         metadata: { error: updateError.message }
-      });
+      }).catch(err => console.error('Log error (non-blocking):', err));
       
       // Notification utilisateur
       await createNotification({
         user_id: user_id,
         application_id: applicationId,
         message: `❌ Erreur de sauvegarde de la lettre pour "${jobOffer.title}". Erreur: ${updateError.message}`
-      });
+      }).catch(err => console.error('Notification error (non-blocking):', err));
       
-      // Retourner 200 à Make.com
-      return res.status(200).json({
-        success: false,
-        error: 'Erreur sauvegarde de la lettre',
-        application_id: applicationId,
-        notified: true
-      });
+      return; // Arrêter le traitement
     }
 
     console.log(`✅ Lettre sauvegardée (Application ID: ${applicationId})`);
@@ -528,6 +527,7 @@ router.post('/process-job', async (req: Request, res: Response) => {
     if (userData.auto_send_enabled) {
       console.log('\n📧 Envoi automatique activé, envoi de l\'email...');
       
+      // 🛡️ PRIORITÉ 4 : Wrap email dans try/catch pour éviter crash
       try {
         // Envoyer l'email avec CV + lettre
         const emailResult = await sendApplication(
@@ -562,7 +562,7 @@ router.post('/process-job', async (req: Request, res: Response) => {
               messageId: emailResult.messageId,
               to: jobOffer.contact_email || 'email non fourni'
             }
-          });
+          }).catch(err => console.error('Log error (non-blocking):', err));
         } else {
           console.warn('⚠️ Échec envoi email:', emailResult.error);
           
@@ -570,30 +570,31 @@ router.post('/process-job', async (req: Request, res: Response) => {
             userId: user_id,
             applicationId: applicationId || undefined,
             metadata: { error: emailResult.error }
-          });
+          }).catch(err => console.error('Log error (non-blocking):', err));
 
-          // Notifier l'échec
+          // Notifier l'échec (non-bloquant)
           await createNotification({
             user_id: user_id,
             application_id: applicationId,
             message: `⚠️ La lettre a été générée mais l'email n'a pas pu être envoyé pour "${jobOffer.title}". Erreur: ${emailResult.error}`
-          });
+          }).catch(err => console.error('Notification error (non-blocking):', err));
         }
       } catch (emailError: any) {
-        console.error('❌ Erreur lors de l\'envoi email:', emailError.message);
+        console.error('❌ Erreur lors de l\'envoi email (CATCH):', emailError.message);
+        console.warn('⚠️ Le traitement continue malgré l\'erreur email');
         
-        await logger.error('email_failed', 'Erreur envoi email', {
+        await logger.error('email_failed', 'Erreur envoi email (exception)', {
           userId: user_id,
           applicationId: applicationId || undefined,
           metadata: { error: emailError.message },
           error: emailError
-        });
+        }).catch(err => console.error('Log error (non-blocking):', err));
       }
     } else {
       console.log('ℹ️ Envoi automatique désactivé, lettre générée uniquement');
     }
 
-    // Étape 6 : Envoyer un SMS de notification à l'utilisateur
+    // Étape 6 : Envoyer un SMS de notification à l'utilisateur (non-bloquant)
     console.log('\n📱 Envoi SMS de notification...');
     
     try {
@@ -625,21 +626,9 @@ router.post('/process-job', async (req: Request, res: Response) => {
         email_sent: emailSent,
         execution_time_ms: executionTime
       }
-    });
+    }).catch(err => console.error('Log error (non-blocking):', err));
 
-    // Retour succès
-    return res.status(200).json({
-      success: true,
-      message: emailSent ? 'Candidature envoyée avec succès' : 'Lettre générée avec succès',
-      data: {
-        application_id: applicationId,
-        subject: coverLetter.subject,
-        cover_letter: coverLetter.body,
-        status: finalStatus,
-        email_sent: emailSent,
-        execution_time_ms: executionTime
-      }
-    });
+    // NOTE : Pas de res.status() ici car déjà envoyé au début
   } catch (error: any) {
     console.error('\n❌ ❌ ❌ ERREUR GLOBALE DANS LE WEBHOOK ❌ ❌ ❌');
     console.error('Message:', error.message);
@@ -651,7 +640,7 @@ router.post('/process-job', async (req: Request, res: Response) => {
       jobOfferId: job_id || undefined,
       metadata: { error: error.message, stack: error.stack },
       error
-    });
+    }).catch(err => console.error('Log error (non-blocking):', err));
 
     // Marquer l'application comme failed si elle existe
     if (applicationId) {
@@ -669,18 +658,11 @@ router.post('/process-job', async (req: Request, res: Response) => {
       user_id: user_id,
       application_id: applicationId || null,
       message: `❌ Erreur inattendue lors du traitement du job ${job_id}. Erreur: ${error.message}`
-    });
+    }).catch(err => console.error('Notification error (non-blocking):', err));
     
-    // IMPORTANT: Retourner 200 à Make.com pour ne PAS bloquer le scénario
-    return res.status(200).json({
-      success: false,
-      error: error.message || 'Erreur inattendue',
-      application_id: applicationId || null,
-      status: 'failed',
-      notified: true,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    // NOTE : Pas de res.status() ici car déjà envoyé au début
   }
+  })(); // Fin du traitement async en arrière-plan
 });
 
 /**

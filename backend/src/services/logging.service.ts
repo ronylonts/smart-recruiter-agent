@@ -37,7 +37,7 @@ interface LogEntry {
  */
 class LoggingService {
   /**
-   * Enregistre un log dans la base de données
+   * Enregistre un log dans la base de données (avec protection contre les erreurs)
    */
   async log(entry: LogEntry): Promise<void> {
     try {
@@ -55,10 +55,17 @@ class LoggingService {
         });
 
       if (error) {
-        console.error('❌ Error logging to database:', error);
+        // 🛡️ PRIORITÉ 3 : Ne PAS crasher si la table logs n'existe pas
+        if (error.code === 'PGRST205') {
+          console.warn('⚠️ Table "logs" non trouvée dans Supabase - Les logs ne seront pas enregistrés');
+          console.warn('💡 Pour activer les logs, créez la table "logs" dans Supabase (voir documentation)');
+        } else {
+          console.error('❌ Error logging to database:', error);
+        }
       }
     } catch (err) {
-      console.error('❌ Fatal error in logging service:', err);
+      // Ne jamais laisser le logger crasher l'application
+      console.error('❌ Fatal error in logging service (non-blocking):', err);
     }
   }
 

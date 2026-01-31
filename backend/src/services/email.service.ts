@@ -146,16 +146,25 @@ ${coverLetter.split('\n').map(line => `            <p style="margin: 10px 0;">${
 };
 
 /**
- * Vérifie la configuration SMTP
+ * Vérifie la configuration SMTP (avec timeout)
  */
 export const verifyEmailConfig = async (): Promise<boolean> => {
   try {
     const transporter = createTransporter();
-    await transporter.verify();
+    
+    // 🛡️ PRIORITÉ 4 : Timeout de 5 secondes pour ne pas bloquer le démarrage
+    const verifyPromise = transporter.verify();
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('SMTP verification timeout')), 5000)
+    );
+    
+    await Promise.race([verifyPromise, timeoutPromise]);
+    
     console.log('✅ Configuration SMTP valide');
     return true;
   } catch (error: any) {
-    console.error('❌ Configuration SMTP invalide:', error);
+    console.error('❌ Configuration SMTP invalide:', error.message);
+    console.warn('⚠️ Les emails ne pourront pas être envoyés, mais le serveur continuera');
     return false;
   }
 };
