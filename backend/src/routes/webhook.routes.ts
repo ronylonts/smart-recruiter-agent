@@ -174,26 +174,15 @@ router.post('/new-job', async (req: Request, res: Response) => {
 
 /**
  * POST /api/webhook/process-job
- * Route flexible - Génère une lettre et sauvegarde
+ * Route simplifiée - Insère job + application avec status 'Envoyé'
  * 
- * Body attendu (2 formats possibles):
- * 
- * Format 1 (job_id existant):
+ * Body attendu (détails Adzuna depuis Make.com - Module 5):
  * {
- *   user_id: string,
- *   job_id: string
- * }
- * 
- * Format 2 (détails Adzuna depuis Make.com):
- * {
- *   user_id: string,
- *   job_title: string,
- *   company: string,
- *   description: string,
- *   job_url: string,
- *   city?: string,
- *   country?: string,
- *   contact_email?: string
+ *   user_id: string (obligatoire),
+ *   title: string (titre du job depuis Adzuna),
+ *   company: string (nom entreprise depuis Adzuna),
+ *   city: string (ville depuis Adzuna),
+ *   url: string (lien offre depuis Adzuna)
  * }
  */
 router.post('/process-job', async (req: Request, res: Response) => {
@@ -663,6 +652,155 @@ router.post('/process-job', async (req: Request, res: Response) => {
     // NOTE : Pas de res.status() ici car déjà envoyé au début
   }
   })(); // Fin du traitement async en arrière-plan
+});
+
+/**
+ * POST /api/webhook/simple-insert
+ * Route ULTRA-SIMPLIFIÉE pour tests - Insère directement job + application
+ * 
+ * Body attendu (détails Adzuna depuis Make.com - Module 5):
+ * {
+ *   user_id: string (obligatoire) - par défaut '29e5e5fe-23df-4069-9350-36742dfa4d2a',
+ *   title: string (titre du job depuis Adzuna),
+ *   company: string (nom entreprise depuis Adzuna),
+ *   city: string (ville depuis Adzuna),
+ *   url: string (lien offre depuis Adzuna)
+ * }
+ */
+router.post('/simple-insert', async (req: Request, res: Response) => {
+  console.log('\n🔔 [SIMPLE-INSERT] Webhook reçu:', new Date().toISOString());
+  console.log('📦 Body reçu:', JSON.stringify(req.body, null, 2));
+
+  // 🚀 ÉTAPE 1 : RÉPONDRE IMMÉDIATEMENT (éviter timeout Make.com)
+  res.status(200).send('OK');
+
+  // 🔄 TRAITEMENT EN ARRIÈRE-PLAN
+  (async () => {
+    try {
+      console.log('\n--- DÉBUT TRAITEMENT EN ARRIÈRE-PLAN ---');
+
+      // 📥 EXTRACTION DES DONNÉES
+      const { 
+        user_id = '29e5e5fe-23df-4069-9350-36742dfa4d2a', // Votre user_id par défaut
+        title, 
+        company, 
+        city, 
+        url 
+      } = req.body;
+
+      console.log('✅ user_id:', user_id);
+      console.log('✅ title:', title);
+      console.log('✅ company:', company);
+      console.log('✅ city:', city);
+      console.log('✅ url:', url);
+
+      // 🛡️ VALIDATION BASIQUE
+      if (!title || !company || !url) {
+        console.error('❌ Données manquantes - title, company ou url absents');
+        console.error('   title:', title);
+        console.error('   company:', company);
+        console.error('   url:', url);
+        return;
+      }
+
+      // 🏢 ÉTAPE 2 : INSERTION JOB_OFFERS
+      console.log('\n📌 ÉTAPE 2 : Insertion dans job_offers...');
+      
+      const jobData = {
+        title: title,
+        company: company,
+        city: city || 'Non spécifié',
+        job_url: url,
+        description: `Offre d'emploi pour ${title} chez ${company}`,
+        profession: title,
+        country: 'France'
+      };
+
+      console.log('📦 Données job à insérer:', JSON.stringify(jobData, null, 2));
+
+      const { data: newJob, error: jobError } = await supabase
+        .from('job_offers')
+        .insert(jobData)
+        .select()
+        .single();
+
+      if (jobError) {
+        console.error('❌ ERREUR insertion job_offers:', jobError.message);
+        console.error('   Détails:', JSON.stringify(jobError, null, 2));
+        return;
+      }
+
+      console.log('✅ Job inséré avec succès !');
+      console.log('   ID:', newJob.id);
+      console.log('   Title:', newJob.title);
+      console.log('   Company:', newJob.company);
+
+      // 📝 ÉTAPE 3 : RÉCUPÉRER LE CV DE L'UTILISATEUR
+      console.log('\n📌 ÉTAPE 3 : Récupération du CV...');
+      
+      const { data: cvData, error: cvError } = await supabase
+        .from('cvs')
+        .select('id')
+        .eq('user_id', user_id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (cvError || !cvData) {
+        console.error('❌ ERREUR : CV introuvable pour user_id:', user_id);
+        console.error('   Erreur:', cvError?.message);
+        console.error('⚠️  L\'utilisateur doit uploader un CV avant de recevoir des offres !');
+        return;
+      }
+
+      console.log('✅ CV trouvé ! ID:', cvData.id);
+
+      // 📨 ÉTAPE 4 : INSERTION APPLICATION avec status 'Envoyé'
+      console.log('\n📌 ÉTAPE 4 : Insertion dans applications...');
+      
+      const applicationData = {
+        user_id: user_id,
+        cv_id: cvData.id,
+        job_offer_id: newJob.id,
+        cover_letter: `Lettre de motivation générée automatiquement pour ${title} chez ${company}`,
+        status: 'sent', // ⚠️ IMPORTANT : 'sent' dans la DB (équivaut à 'Envoyé')
+        applied_at: new Date().toISOString()
+      };
+
+      console.log('📦 Données application à insérer:', JSON.stringify(applicationData, null, 2));
+
+      const { data: newApplication, error: appError } = await supabase
+        .from('applications')
+        .insert(applicationData)
+        .select()
+        .single();
+
+      if (appError) {
+        console.error('❌ ERREUR insertion applications:', appError.message);
+        console.error('   Détails:', JSON.stringify(appError, null, 2));
+        return;
+      }
+
+      console.log('✅ Application insérée avec succès !');
+      console.log('   ID:', newApplication.id);
+      console.log('   Status:', newApplication.status);
+      console.log('   Job ID:', newApplication.job_offer_id);
+
+      // 🎉 SUCCÈS FINAL
+      console.log('\n🎉 🎉 🎉 TRAITEMENT TERMINÉ AVEC SUCCÈS ! 🎉 🎉 🎉');
+      console.log('📊 Résumé:');
+      console.log('   - Job créé:', newJob.id);
+      console.log('   - Application créée:', newApplication.id);
+      console.log('   - Status:', newApplication.status);
+      console.log('--- FIN TRAITEMENT EN ARRIÈRE-PLAN ---\n');
+
+    } catch (globalError: any) {
+      console.error('\n❌ ❌ ❌ ERREUR GLOBALE ❌ ❌ ❌');
+      console.error('Message:', globalError.message);
+      console.error('Stack:', globalError.stack);
+      console.error('--- FIN TRAITEMENT (AVEC ERREUR) ---\n');
+    }
+  })();
 });
 
 /**
