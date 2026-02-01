@@ -291,6 +291,14 @@ export const deleteCV = async (cvId: string): Promise<CVServiceResponse> => {
     // 2. Extraire le chemin du fichier depuis l'URL
     // URL format: https://{project}.supabase.co/storage/v1/object/public/cvs/{path}
     const fileUrl = cvData?.file_url;
+    
+    if (!fileUrl) {
+      return {
+        success: false,
+        error: 'URL du fichier introuvable',
+      };
+    }
+    
     const match = fileUrl.match(/\/cvs\/(.+)$/);
     const filePath = match ? match[1] : null;
 
@@ -371,6 +379,14 @@ export const downloadCV = async (cvId: string): Promise<CVServiceResponse> => {
 
     // Extraire le chemin du fichier
     const fileUrl = cvData?.file_url;
+    
+    if (!fileUrl) {
+      return {
+        success: false,
+        error: 'URL du fichier introuvable',
+      };
+    }
+    
     const match = fileUrl.match(/\/cvs\/(.+)$/);
     const filePath = match ? match[1] : null;
 

@@ -216,7 +216,7 @@ export const updateApplicationStatus = async (
       .update(updates)
       .eq('id', applicationId)
       .select()
-      .single();
+      .single() as { data: any; error: any };
 
     if (error) {
       return {

@@ -292,7 +292,7 @@ export const Notifications = () => {
 
               {/* Liste des notifications */}
               <div className="space-y-6">
-                {filteredNotifications.map((notification, index) => {
+                {filteredNotifications.map((notification) => {
                   const { icon, color } = getNotificationIcon(notification);
                   
                   return (

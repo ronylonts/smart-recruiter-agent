@@ -34,7 +34,10 @@ export const StatsCards = ({ userId }: StatsCardsProps) => {
       const { data: applications, error } = await supabase
         .from('applications')
         .select('*')
-        .eq('user_id', userId);
+        .eq('user_id', userId) as {
+          data: Array<{ status: string }> | null;
+          error: any;
+        };
 
       if (error) throw error;
 

@@ -22,7 +22,7 @@ export const Login = () => {
     const { error } = await login(data.email, data.password);
     
     if (error) {
-      setError(error.message);
+      setError(error.message || 'Erreur de connexion');
     } else {
       navigate('/');
     }

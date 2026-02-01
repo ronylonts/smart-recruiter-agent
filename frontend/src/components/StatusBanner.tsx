@@ -45,7 +45,10 @@ export const StatusBanner = () => {
         .from('users')
         .select('auto_send_enabled')
         .eq('id', user.id)
-        .single();
+        .single() as {
+          data: { auto_send_enabled?: boolean } | null;
+          error: any;
+        };
 
       if (error) throw error;
 
