@@ -30,7 +30,7 @@ export const AutoSendToggle = ({ className = '' }: AutoSendToggleProps) => {
         .from('users')
         .select('auto_send_enabled')
         .eq('id', user.id)
-        .single();
+        .single() as { data: { auto_send_enabled?: boolean } | null; error: any };
 
       if (error) throw error;
 
@@ -52,7 +52,7 @@ export const AutoSendToggle = ({ className = '' }: AutoSendToggleProps) => {
     try {
       const { error } = await supabase
         .from('users')
-        .update({ auto_send_enabled: newStatus })
+        .update({ auto_send_enabled: newStatus } as any)
         .eq('id', user.id);
 
       if (error) throw error;

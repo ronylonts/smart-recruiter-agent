@@ -49,7 +49,7 @@ export const CoverLetterEditor = ({
         .update({
           cover_letter_edited: editedLetter,
           is_manually_edited: true
-        })
+        } as any)
         .eq('id', applicationId);
 
       if (error) throw error;
@@ -157,7 +157,7 @@ export const CoverLetterEditor = ({
               variant="primary"
               onClick={handleSave}
               className="flex-1"
-              loading={saving}
+              isLoading={saving}
               disabled={!hasChanges || wordCount < 50}
             >
               💾 Sauvegarder les modifications

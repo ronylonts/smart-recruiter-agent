@@ -63,12 +63,12 @@ export const ApplicationModal = ({
           job_offers (title, company, description, job_url, city, country)
         `)
         .eq('id', applicationId)
-        .single();
+        .single() as { data: Application | null; error: any };
 
       if (appError) throw appError;
 
       setApplication(appData);
-      setNewStatus(appData.status);
+      setNewStatus(appData?.status || '');
 
       // Charger les notifications liées
       const { data: notifData, error: notifError } = await supabase
@@ -95,7 +95,7 @@ export const ApplicationModal = ({
     try {
       const { error } = await supabase
         .from('applications')
-        .update({ status: newStatus })
+        .update({ status: newStatus } as any)
         .eq('id', applicationId);
 
       if (error) throw error;

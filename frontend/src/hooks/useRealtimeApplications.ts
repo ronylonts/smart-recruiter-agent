@@ -130,6 +130,6 @@ export const useRealtimeApplications = (userId: string | undefined) => {
     applications,
     loading,
     refresh: loadApplications,
-    isConnected: realtimeChannel?.state === 'subscribed' as boolean
+    isConnected: realtimeChannel?.state === 'subscribed'
   };
 };
