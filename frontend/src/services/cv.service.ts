@@ -52,7 +52,7 @@ export const uploadCV = async (
     // 1. Upload du fichier vers Supabase Storage
     const fileName = `${userId}/${Date.now()}_${file.name}`;
     
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('cvs')
       .upload(fileName, file, {
         cacheControl: '3600',
@@ -231,10 +231,10 @@ export const updateCV = async (
 
     const { data, error } = await supabase
       .from('cvs')
-      .update(updateData as any)
+      .update(updateData)
       .eq('id', cvId)
       .select()
-      .single();
+      .single() as { data: any; error: any };
 
     if (error) {
       console.error('UpdateCV error:', error);
@@ -275,7 +275,10 @@ export const deleteCV = async (cvId: string): Promise<CVServiceResponse> => {
       .from('cvs')
       .select('file_url')
       .eq('id', cvId)
-      .single();
+      .single() as {
+        data: { file_url: string } | null;
+        error: any;
+      };
 
     if (fetchError) {
       console.error('Fetch CV error:', fetchError);
@@ -287,7 +290,7 @@ export const deleteCV = async (cvId: string): Promise<CVServiceResponse> => {
 
     // 2. Extraire le chemin du fichier depuis l'URL
     // URL format: https://{project}.supabase.co/storage/v1/object/public/cvs/{path}
-    const fileUrl = cvData.file_url;
+    const fileUrl = cvData?.file_url;
     const match = fileUrl.match(/\/cvs\/(.+)$/);
     const filePath = match ? match[1] : null;
 
@@ -353,7 +356,10 @@ export const downloadCV = async (cvId: string): Promise<CVServiceResponse> => {
       .from('cvs')
       .select('file_url')
       .eq('id', cvId)
-      .single();
+      .single() as {
+        data: { file_url: string } | null;
+        error: any;
+      };
 
     if (fetchError) {
       console.error('Fetch CV error:', fetchError);
@@ -364,7 +370,7 @@ export const downloadCV = async (cvId: string): Promise<CVServiceResponse> => {
     }
 
     // Extraire le chemin du fichier
-    const fileUrl = cvData.file_url;
+    const fileUrl = cvData?.file_url;
     const match = fileUrl.match(/\/cvs\/(.+)$/);
     const filePath = match ? match[1] : null;
 

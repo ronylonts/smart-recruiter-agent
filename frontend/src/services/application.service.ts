@@ -252,7 +252,14 @@ export const getApplicationStats = async (
     const { data, error } = await supabase
       .from('applications')
       .select('status, response_received_at, applied_at')
-      .eq('user_id', userId);
+      .eq('user_id', userId) as {
+        data: Array<{
+          status: string;
+          response_received_at: string | null;
+          applied_at: string;
+        }> | null;
+        error: any;
+      };
 
     if (error) {
       return {
