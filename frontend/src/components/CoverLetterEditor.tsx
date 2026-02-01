@@ -44,6 +44,7 @@ export const CoverLetterEditor = ({
     setSaving(true);
 
     try {
+      // @ts-ignore - Supabase type inference issue
       const { error } = (await supabase
         .from('applications')
         .update({

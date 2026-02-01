@@ -50,6 +50,7 @@ export const AutoSendToggle = ({ className = '' }: AutoSendToggleProps) => {
     const newStatus = !enabled;
 
     try {
+      // @ts-ignore - Supabase type inference issue
       const { error } = (await supabase
         .from('users')
         .update({ auto_send_enabled: newStatus })

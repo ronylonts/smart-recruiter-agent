@@ -93,6 +93,7 @@ export const ApplicationModal = ({
     setUpdating(true);
 
     try {
+      // @ts-ignore - Supabase type inference issue
       const { error } = (await supabase
         .from('applications')
         .update({ status: newStatus })

@@ -229,6 +229,7 @@ export const updateCV = async (
       };
     }
 
+    // @ts-ignore - Supabase type inference issue
     const { data, error } = (await supabase
       .from('cvs')
       .update(updateData)

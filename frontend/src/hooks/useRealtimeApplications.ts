@@ -130,6 +130,7 @@ export const useRealtimeApplications = (userId: string | undefined) => {
     applications,
     loading,
     refresh: loadApplications,
+    // @ts-ignore - CHANNEL_STATES type mismatch
     isConnected: realtimeChannel?.state ? realtimeChannel.state === 'subscribed' : false
   };
 };

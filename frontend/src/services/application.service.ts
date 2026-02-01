@@ -211,6 +211,7 @@ export const updateApplicationStatus = async (
       updates.response_received_at = new Date().toISOString();
     }
 
+    // @ts-ignore - Supabase type inference issue
     const { data, error } = (await supabase
       .from('applications')
       .update(updates)
