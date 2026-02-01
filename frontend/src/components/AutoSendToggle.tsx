@@ -51,10 +51,10 @@ export const AutoSendToggle = ({ className = '' }: AutoSendToggleProps) => {
 
     try {
       // @ts-ignore - Supabase type inference issue
-      const { error } = (await supabase
-        .from('users')
+      const { error } = await (supabase
+        .from('users') as any)
         .update({ auto_send_enabled: newStatus })
-        .eq('id', user.id)) as { error: any };
+        .eq('id', user.id);
 
       if (error) throw error;
 

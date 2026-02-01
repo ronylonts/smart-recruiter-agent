@@ -212,12 +212,12 @@ export const updateApplicationStatus = async (
     }
 
     // @ts-ignore - Supabase type inference issue
-    const { data, error } = (await supabase
-      .from('applications')
+    const { data, error } = await (supabase
+      .from('applications') as any)
       .update(updates)
       .eq('id', applicationId)
       .select()
-      .single()) as { data: any; error: any };
+      .single();
 
     if (error) {
       return {

@@ -94,10 +94,10 @@ export const ApplicationModal = ({
 
     try {
       // @ts-ignore - Supabase type inference issue
-      const { error } = (await supabase
-        .from('applications')
+      const { error } = await (supabase
+        .from('applications') as any)
         .update({ status: newStatus })
-        .eq('id', applicationId)) as { error: any };
+        .eq('id', applicationId);
 
       if (error) throw error;
 

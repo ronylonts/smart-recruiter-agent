@@ -230,12 +230,12 @@ export const updateCV = async (
     }
 
     // @ts-ignore - Supabase type inference issue
-    const { data, error } = (await supabase
-      .from('cvs')
+    const { data, error } = await (supabase
+      .from('cvs') as any)
       .update(updateData)
       .eq('id', cvId)
       .select()
-      .single()) as { data: any; error: any };
+      .single();
 
     if (error) {
       console.error('UpdateCV error:', error);

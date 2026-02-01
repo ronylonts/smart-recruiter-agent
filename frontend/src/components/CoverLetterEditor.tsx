@@ -45,13 +45,13 @@ export const CoverLetterEditor = ({
 
     try {
       // @ts-ignore - Supabase type inference issue
-      const { error } = (await supabase
-        .from('applications')
+      const { error } = await (supabase
+        .from('applications') as any)
         .update({
           cover_letter_edited: editedLetter,
           is_manually_edited: true
         })
-        .eq('id', applicationId)) as { error: any };
+        .eq('id', applicationId);
 
       if (error) throw error;
 
