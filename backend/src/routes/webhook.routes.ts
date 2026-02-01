@@ -682,24 +682,56 @@ router.post('/simple-insert', async (req: Request, res: Response) => {
       // 📥 EXTRACTION DES DONNÉES
       const { 
         user_id = '29e5e5fe-23df-4069-9350-36742dfa4d2a', // Votre user_id par défaut
-        title, 
+        title,
+        job_title, // Make.com envoie "job_title"
         company, 
         city, 
-        url 
+        url,
+        job_url // Make.com envoie "job_url"
       } = req.body;
 
+      // Utiliser job_title/job_url si title/url ne sont pas définis
+      const finalTitle = title || job_title;
+      const finalUrl = url || job_url;
+
+      // Extraire le nom de l'entreprise si c'est un objet
+      let finalCompany = company;
+      if (typeof company === 'object' && company.display_name) {
+        finalCompany = company.display_name;
+      } else if (typeof company === 'string') {
+        try {
+          const parsed = JSON.parse(company);
+          finalCompany = parsed.display_name || company;
+        } catch (e) {
+          finalCompany = company;
+        }
+      }
+
+      // Extraire le nom de la ville si c'est un objet
+      let finalCity = city;
+      if (typeof city === 'object' && city.display_name) {
+        finalCity = city.display_name;
+      } else if (typeof city === 'string') {
+        try {
+          const parsed = JSON.parse(city);
+          finalCity = parsed.display_name || city;
+        } catch (e) {
+          finalCity = city;
+        }
+      }
+
       console.log('✅ user_id:', user_id);
-      console.log('✅ title:', title);
-      console.log('✅ company:', company);
-      console.log('✅ city:', city);
-      console.log('✅ url:', url);
+      console.log('✅ title:', finalTitle);
+      console.log('✅ company:', finalCompany);
+      console.log('✅ city:', finalCity);
+      console.log('✅ url:', finalUrl);
 
       // 🛡️ VALIDATION BASIQUE
-      if (!title || !company || !url) {
+      if (!finalTitle || !finalCompany || !finalUrl) {
         console.error('❌ Données manquantes - title, company ou url absents');
-        console.error('   title:', title);
-        console.error('   company:', company);
-        console.error('   url:', url);
+        console.error('   title:', finalTitle);
+        console.error('   company:', finalCompany);
+        console.error('   url:', finalUrl);
         return;
       }
 
@@ -707,12 +739,12 @@ router.post('/simple-insert', async (req: Request, res: Response) => {
       console.log('\n📌 ÉTAPE 2 : Insertion dans job_offers...');
       
       const jobData = {
-        title: title,
-        company: company,
-        city: city || 'Non spécifié',
-        job_url: url,
-        description: `Offre d'emploi pour ${title} chez ${company}`,
-        profession: title,
+        title: finalTitle,
+        company: finalCompany,
+        city: finalCity || 'Non spécifié',
+        job_url: finalUrl,
+        description: `Offre d'emploi pour ${finalTitle} chez ${finalCompany}`,
+        profession: finalTitle,
         country: 'France'
       };
 
