@@ -211,12 +211,12 @@ export const updateApplicationStatus = async (
       updates.response_received_at = new Date().toISOString();
     }
 
-    const { data, error } = await supabase
+    const { data, error } = (await supabase
       .from('applications')
       .update(updates)
       .eq('id', applicationId)
       .select()
-      .single() as { data: any; error: any };
+      .single()) as { data: any; error: any };
 
     if (error) {
       return {

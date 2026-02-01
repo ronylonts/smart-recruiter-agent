@@ -50,10 +50,10 @@ export const AutoSendToggle = ({ className = '' }: AutoSendToggleProps) => {
     const newStatus = !enabled;
 
     try {
-      const { error } = await supabase
+      const { error } = (await supabase
         .from('users')
-        .update({ auto_send_enabled: newStatus } as any)
-        .eq('id', user.id);
+        .update({ auto_send_enabled: newStatus })
+        .eq('id', user.id)) as { error: any };
 
       if (error) throw error;
 

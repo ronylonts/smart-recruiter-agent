@@ -44,13 +44,13 @@ export const CoverLetterEditor = ({
     setSaving(true);
 
     try {
-      const { error } = await supabase
+      const { error } = (await supabase
         .from('applications')
         .update({
           cover_letter_edited: editedLetter,
           is_manually_edited: true
-        } as any)
-        .eq('id', applicationId);
+        })
+        .eq('id', applicationId)) as { error: any };
 
       if (error) throw error;
 

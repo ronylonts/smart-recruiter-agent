@@ -229,12 +229,12 @@ export const updateCV = async (
       };
     }
 
-    const { data, error } = await supabase
+    const { data, error } = (await supabase
       .from('cvs')
       .update(updateData)
       .eq('id', cvId)
       .select()
-      .single() as { data: any; error: any };
+      .single()) as { data: any; error: any };
 
     if (error) {
       console.error('UpdateCV error:', error);

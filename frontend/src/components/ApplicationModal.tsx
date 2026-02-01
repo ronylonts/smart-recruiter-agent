@@ -93,10 +93,10 @@ export const ApplicationModal = ({
     setUpdating(true);
 
     try {
-      const { error } = await supabase
+      const { error } = (await supabase
         .from('applications')
-        .update({ status: newStatus } as any)
-        .eq('id', applicationId);
+        .update({ status: newStatus })
+        .eq('id', applicationId)) as { error: any };
 
       if (error) throw error;
 
