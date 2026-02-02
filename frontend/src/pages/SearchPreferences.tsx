@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../services/supabase';
 import { Button } from '../components/Button';
-import toast from 'react-hot-toast';
 
 // Villes principales par pays
 const CITIES_BY_COUNTRY: Record<string, string[]> = {
@@ -66,8 +65,9 @@ export const SearchPreferences = () => {
       setCountries(countriesData || []);
 
       // Charger les préférences utilisateur
-      const { data: userData } = await supabase
-        .from('users')
+      // @ts-ignore - Supabase type inference issue
+      const { data: userData } = await (supabase
+        .from('users') as any)
         .select('target_countries, target_cities')
         .eq('id', user.id)
         .single();
@@ -78,7 +78,7 @@ export const SearchPreferences = () => {
       }
     } catch (error) {
       console.error('Erreur chargement:', error);
-      toast.error('Erreur de chargement');
+      alert('Erreur de chargement');
     } finally {
       setLoading(false);
     }
@@ -131,8 +131,9 @@ export const SearchPreferences = () => {
 
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('users')
+      // @ts-ignore - Supabase type inference issue
+      const { error } = await (supabase
+        .from('users') as any)
         .update({
           target_countries: selectedCountries,
           target_cities: selectedCities
@@ -141,10 +142,10 @@ export const SearchPreferences = () => {
 
       if (error) throw error;
 
-      toast.success('Préférences sauvegardées ! 🎉');
+      alert('Préférences sauvegardées ! 🎉');
     } catch (error: any) {
       console.error('Erreur sauvegarde:', error);
-      toast.error('Erreur lors de la sauvegarde');
+      alert('Erreur lors de la sauvegarde');
     } finally {
       setSaving(false);
     }
