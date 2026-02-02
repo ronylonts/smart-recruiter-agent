@@ -49,36 +49,50 @@ export const SearchPreferences = () => {
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [user]);
 
   const loadData = async () => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
 
     try {
       // Charger les pays disponibles
-      const { data: countriesData } = await supabase
+      const { data: countriesData, error: countriesError } = await supabase
         .from('countries')
         .select('*')
         .eq('active', true)
         .order('name');
 
+      if (countriesError) {
+        console.error('Erreur countries:', countriesError);
+        alert('Erreur: La table "countries" n\'existe pas. Exécutez le script SQL dans Supabase.');
+        return;
+      }
+
       setCountries(countriesData || []);
 
       // Charger les préférences utilisateur
       // @ts-ignore - Supabase type inference issue
-      const { data: userData } = await (supabase
+      const { data: userData, error: userError } = await (supabase
         .from('users') as any)
         .select('target_countries, target_cities')
         .eq('id', user.id)
         .single();
 
+      if (userError) {
+        console.error('Erreur user:', userError);
+        // Pas grave si les colonnes n'existent pas encore, on continue
+      }
+
       if (userData) {
         setSelectedCountries(userData.target_countries || []);
         setSelectedCities(userData.target_cities || {});
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Erreur chargement:', error);
-      alert('Erreur de chargement');
+      alert('Erreur: ' + error.message);
     } finally {
       setLoading(false);
     }
