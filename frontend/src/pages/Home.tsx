@@ -43,33 +43,34 @@ export const Home = () => {
           </Card>
         )}
         
+        {/* Présentation de l'application */}
         <Card className="mb-6">
-          <h2 className="text-2xl font-semibold mb-4">Projet React + TypeScript + Vite</h2>
-          <p className="text-gray-600 mb-4">
-            Cette application est configurée avec :
+          <h2 className="text-2xl font-semibold mb-4">
+            🚀 Votre assistant de candidature automatique
+          </h2>
+          <p className="text-gray-700 mb-4">
+            Smart Recruiter Agent vous aide à trouver et postuler automatiquement aux offres d'emploi en Europe qui correspondent à votre profil.
           </p>
-          <ul className="list-disc list-inside space-y-2 text-gray-700">
-            <li>React 19 avec TypeScript</li>
-            <li>Vite pour un build ultra-rapide</li>
-            <li>React Router DOM pour la navigation</li>
-            <li>Tailwind CSS pour le styling</li>
-            <li>Supabase pour l'authentification et la base de données</li>
-            <li>Axios pour les appels API</li>
-            <li>React Hook Form pour la gestion des formulaires</li>
-          </ul>
-        </Card>
-
-        <Card>
-          <h3 className="text-xl font-semibold mb-4">Structure du projet</h3>
-          <div className="space-y-2 text-gray-700">
-            <div><code className="bg-gray-100 px-2 py-1 rounded">src/components</code> - Composants UI réutilisables</div>
-            <div><code className="bg-gray-100 px-2 py-1 rounded">src/services</code> - Services API et Supabase</div>
-            <div><code className="bg-gray-100 px-2 py-1 rounded">src/hooks</code> - Hooks personnalisés</div>
-            <div><code className="bg-gray-100 px-2 py-1 rounded">src/types</code> - Définitions TypeScript</div>
-            <div><code className="bg-gray-100 px-2 py-1 rounded">src/pages</code> - Pages de l'application</div>
+          <div className="grid md:grid-cols-3 gap-4 mt-6">
+            <div className="bg-green-50 p-4 rounded-lg">
+              <div className="text-3xl mb-2">📄</div>
+              <h3 className="font-semibold text-gray-800 mb-1">Téléchargez votre CV</h3>
+              <p className="text-sm text-gray-600">Importez votre CV et définissez vos critères de recherche</p>
+            </div>
+            <div className="bg-blue-50 p-4 rounded-lg">
+              <div className="text-3xl mb-2">🌍</div>
+              <h3 className="font-semibold text-gray-800 mb-1">Choisissez vos pays</h3>
+              <p className="text-sm text-gray-600">Sélectionnez les pays et villes qui vous intéressent en Europe</p>
+            </div>
+            <div className="bg-purple-50 p-4 rounded-lg">
+              <div className="text-3xl mb-2">✨</div>
+              <h3 className="font-semibold text-gray-800 mb-1">Recevez des offres</h3>
+              <p className="text-sm text-gray-600">Nous recherchons et candidatons automatiquement pour vous</p>
+            </div>
           </div>
         </Card>
 
+        {/* Actions principales */}
         <div className="flex gap-4 justify-center mt-8 flex-wrap">
           <Button 
             variant="primary" 
@@ -83,14 +84,14 @@ export const Home = () => {
             size="lg"
             onClick={() => navigate('/upload-cv')}
           >
-            📄 Télécharger mon CV
+            📄 Mon CV
           </Button>
           <Button 
-            variant="secondary" 
+            variant="primary" 
             size="lg"
-            onClick={() => window.open('https://github.com', '_blank')}
+            onClick={() => navigate('/preferences')}
           >
-            📚 Documentation
+            🌍 Pays & Villes
           </Button>
         </div>
       </div>
