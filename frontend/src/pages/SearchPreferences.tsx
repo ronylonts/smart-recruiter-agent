@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../services/supabase';
 import { Button } from '../components/Button';
@@ -41,12 +42,14 @@ interface Country {
 
 export const SearchPreferences = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [countries, setCountries] = useState<Country[]>([]);
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
   const [selectedCities, setSelectedCities] = useState<Record<string, string[]>>({});
   const [customCityInputs, setCustomCityInputs] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     loadData();
@@ -148,7 +151,11 @@ export const SearchPreferences = () => {
     // Vérifier si la ville n'est pas déjà dans la liste
     const currentCities = selectedCities[countryCode] || [];
     if (currentCities.includes(cityName)) {
-      alert(`"${cityName}" est déjà dans votre liste`);
+      // Ne rien faire, la ville existe déjà
+      setCustomCityInputs(prev => ({
+        ...prev,
+        [countryCode]: ''
+      }));
       return;
     }
 
@@ -188,11 +195,17 @@ export const SearchPreferences = () => {
 
       if (error) throw error;
 
-      alert('Préférences sauvegardées ! 🎉');
+      // Afficher le message de succès
+      setSuccessMessage('Préférences sauvegardées avec succès ! 🎉');
+
+      // Rediriger vers le dashboard après 2 secondes
+      setTimeout(() => {
+        navigate('/dashboard');
+      }, 2000);
     } catch (error: any) {
       console.error('Erreur sauvegarde:', error);
-      alert('Erreur lors de la sauvegarde');
-    } finally {
+      setSuccessMessage('');
+      alert('Erreur lors de la sauvegarde : ' + error.message);
       setSaving(false);
     }
   };
@@ -363,22 +376,32 @@ export const SearchPreferences = () => {
         </div>
       )}
 
-      {/* Bouton de sauvegarde */}
-      <div className="mt-8 flex justify-end gap-4">
-        <Button
-          variant="secondary"
-          onClick={loadData}
-        >
-          Annuler
-        </Button>
-        <Button
-          onClick={savePreferences}
-          isLoading={saving}
-          disabled={selectedCountries.length === 0}
-        >
-          Sauvegarder les préférences
-        </Button>
-      </div>
+      {/* Message de succès */}
+      {successMessage && (
+        <div className="mt-8 bg-green-50 border-2 border-green-500 rounded-lg p-4 text-center">
+          <p className="text-green-800 font-semibold text-lg">{successMessage}</p>
+          <p className="text-green-700 text-sm mt-1">Redirection vers le dashboard...</p>
+        </div>
+      )}
+
+      {/* Boutons de sauvegarde */}
+      {!successMessage && (
+        <div className="mt-8 flex justify-end gap-4">
+          <Button
+            variant="secondary"
+            onClick={() => navigate('/dashboard')}
+          >
+            Retour au Dashboard
+          </Button>
+          <Button
+            onClick={savePreferences}
+            isLoading={saving}
+            disabled={selectedCountries.length === 0}
+          >
+            Sauvegarder les préférences
+          </Button>
+        </div>
+      )}
 
       {/* Résumé */}
       {selectedCountries.length > 0 && (
