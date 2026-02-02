@@ -33,6 +33,12 @@ export const Sidebar = () => {
       path: '/upload-cv'
     },
     {
+      id: 'preferences',
+      label: 'Pays & Villes',
+      icon: '🌍',
+      path: '/preferences'
+    },
+    {
       id: 'applications',
       label: 'Candidatures',
       icon: '📨',

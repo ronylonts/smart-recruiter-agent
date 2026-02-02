@@ -6,6 +6,7 @@ import { UploadCV } from './pages/UploadCV';
 import { Dashboard } from './pages/Dashboard';
 import { Applications } from './pages/Applications';
 import { Notifications } from './pages/Notifications';
+import { SearchPreferences } from './pages/SearchPreferences';
 import { useAuth } from './hooks/useAuth';
 
 // Composant pour protéger les routes qui nécessitent une authentification
@@ -72,6 +73,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Notifications />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/preferences"
+          element={
+            <ProtectedRoute>
+              <SearchPreferences />
             </ProtectedRoute>
           }
         />
