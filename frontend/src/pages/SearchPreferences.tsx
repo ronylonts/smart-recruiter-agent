@@ -44,6 +44,7 @@ export const SearchPreferences = () => {
   const [countries, setCountries] = useState<Country[]>([]);
   const [selectedCountries, setSelectedCountries] = useState<string[]>([]);
   const [selectedCities, setSelectedCities] = useState<Record<string, string[]>>({});
+  const [customCityInputs, setCustomCityInputs] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -137,6 +138,37 @@ export const SearchPreferences = () => {
     setSelectedCities(prev => ({
       ...prev,
       [countryCode]: allCities
+    }));
+  };
+
+  const addCustomCity = (countryCode: string) => {
+    const cityName = customCityInputs[countryCode]?.trim();
+    if (!cityName) return;
+
+    // Vérifier si la ville n'est pas déjà dans la liste
+    const currentCities = selectedCities[countryCode] || [];
+    if (currentCities.includes(cityName)) {
+      alert(`"${cityName}" est déjà dans votre liste`);
+      return;
+    }
+
+    // Ajouter la ville
+    setSelectedCities(prev => ({
+      ...prev,
+      [countryCode]: [...(prev[countryCode] || []), cityName]
+    }));
+
+    // Réinitialiser l'input
+    setCustomCityInputs(prev => ({
+      ...prev,
+      [countryCode]: ''
+    }));
+  };
+
+  const removeCity = (countryCode: string, cityName: string) => {
+    setSelectedCities(prev => ({
+      ...prev,
+      [countryCode]: (prev[countryCode] || []).filter(c => c !== cityName)
     }));
   };
 
@@ -238,29 +270,89 @@ export const SearchPreferences = () => {
                   </Button>
                 </div>
 
-                {cities.length === 0 ? (
-                  <p className="text-gray-500 text-sm">
-                    Aucune ville prédéfinie. Toutes les villes seront incluses.
+                {/* Villes prédéfinies */}
+                {cities.length > 0 && (
+                  <>
+                    <div className="mb-3">
+                      <p className="text-sm font-medium text-gray-700 mb-2">Villes principales :</p>
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
+                        {cities.map(city => (
+                          <button
+                            key={city}
+                            onClick={() => toggleCity(countryCode, city)}
+                            className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                              selectedCitiesForCountry.includes(city)
+                                ? 'bg-blue-500 text-white'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                          >
+                            {city}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Ajouter une ville personnalisée */}
+                <div className="mt-4 border-t pt-4">
+                  <p className="text-sm font-medium text-gray-700 mb-2">
+                    🏙️ Votre ville n'est pas dans la liste ? Ajoutez-la :
                   </p>
-                ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
-                    {cities.map(city => (
-                      <button
-                        key={city}
-                        onClick={() => toggleCity(countryCode, city)}
-                        className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                          selectedCitiesForCountry.includes(city)
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                      >
-                        {city}
-                      </button>
-                    ))}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Ex: Montpellier, Dijon, Grenoble..."
+                      value={customCityInputs[countryCode] || ''}
+                      onChange={(e) => setCustomCityInputs(prev => ({
+                        ...prev,
+                        [countryCode]: e.target.value
+                      }))}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          addCustomCity(countryCode);
+                        }
+                      }}
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => addCustomCity(countryCode)}
+                      disabled={!customCityInputs[countryCode]?.trim()}
+                    >
+                      Ajouter
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Villes sélectionnées (avec possibilité de supprimer) */}
+                {selectedCitiesForCountry.length > 0 && (
+                  <div className="mt-4 border-t pt-4">
+                    <p className="text-sm font-medium text-gray-700 mb-2">
+                      ✅ Villes sélectionnées ({selectedCitiesForCountry.length}) :
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedCitiesForCountry.map(city => (
+                        <div
+                          key={city}
+                          className="inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm"
+                        >
+                          <span>{city}</span>
+                          <button
+                            onClick={() => removeCity(countryCode, city)}
+                            className="hover:bg-green-200 rounded-full p-1 transition-colors"
+                            title="Retirer cette ville"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
-                {selectedCitiesForCountry.length === 0 && cities.length > 0 && (
+                {selectedCitiesForCountry.length === 0 && (
                   <p className="text-sm text-orange-600 mt-3">
                     ℹ️ Aucune ville sélectionnée = toutes les villes de {country?.name}
                   </p>
