@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Webhook</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 20px;
+    }
+    button {
+      background: #0070f3;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+    button:hover {
+      background: #0051cc;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    #result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 5px;
+      font-family: monospace;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .success {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      color: #155724;
+    }
+    .error {
+      background: #f8d7da;
+      border: 1px solid #f5c6cb;
+      color: #721c24;
+    }
+    .info {
+      background: #d1ecf1;
+      border: 1px solid #bee5eb;
+      color: #0c5460;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🧪 Test Webhook Backend</h1>
+    <p>Cliquez sur le bouton pour tester le webhook de création d'offre.</p>
+    
+    <button onclick="testWebhook()" id="testBtn">
+      📤 Envoyer Test au Backend
+    </button>
+
+    <button onclick="checkSupabase()" id="checkBtn">
+      📊 Vérifier Supabase
+    </button>
+    
+    <div id="result"></div>
+  </div>
+
+  <script>
+    const WEBHOOK_URL = 'https://smart-recruiter-agent.onrender.com/api/webhook/process-job';
+    const USER_ID = '29e5e5fe-23df-4069-9350-36742dfa4d2a';
+
+    async function testWebhook() {
+      const resultDiv = document.getElementById('result');
+      const btn = document.getElementById('testBtn');
+      
+      btn.disabled = true;
+      btn.textContent = '⏳ Envoi en cours...';
+      
+      resultDiv.className = 'info';
+      resultDiv.textContent = '📡 Envoi de la requête au backend...\n\nURL: ' + WEBHOOK_URL;
+
+      try {
+        const response = await fetch(WEBHOOK_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            user_id: USER_ID,
+            job_title: 'Test Manuel Développeur Web',
+            company: 'TEST COMPANY VIA HTML',
+            description: 'Ceci est un test manuel du webhook',
+            job_url: 'https://example.com/test-job',
+            city: 'Montpellier',
+            country: 'FR'
+          })
+        });
+
+        const data = await response.json();
+        
+        resultDiv.className = 'success';
+        resultDiv.textContent = 
+          '✅ SUCCÈS !\n\n' +
+          'Status: ' + response.status + '\n' +
+          'Réponse:\n' +
+          JSON.stringify(data, null, 2) + '\n\n' +
+          '🔍 Maintenant, vérifiez Supabase :\n' +
+          '1. Allez dans Supabase SQL Editor\n' +
+          '2. Exécutez: SELECT * FROM job_offers ORDER BY id DESC LIMIT 5;\n' +
+          '3. Vous devriez voir "TEST COMPANY VIA HTML" !';
+        
+        btn.textContent = '✅ Test réussi !';
+      } catch (error) {
+        resultDiv.className = 'error';
+        resultDiv.textContent = 
+          '❌ ERREUR !\n\n' +
+          error.message + '\n\n' +
+          'Vérifiez que le backend est en ligne :\n' +
+          'https://smart-recruiter-agent.onrender.com/health';
+        
+        btn.disabled = false;
+        btn.textContent = '🔄 Réessayer';
+      }
+    }
+
+    function checkSupabase() {
+      alert(
+        '📊 Pour vérifier dans Supabase :\n\n' +
+        '1. Allez sur : https://supabase.com/dashboard/project/doyqvufcofebzsiswddq/editor\n\n' +
+        '2. Cliquez sur la table "job_offers"\n\n' +
+        '3. Vous devriez voir une offre "TEST COMPANY VIA HTML"\n\n' +
+        '4. Si elle n\'existe pas, le webhook a échoué silencieusement'
+      );
+    }
+  </script>
+</body>
+</html>
