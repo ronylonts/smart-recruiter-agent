@@ -59,9 +59,9 @@ export const generateCoverLetter = async (
     // Prompt structuré pour obtenir un JSON
     const prompt = `Tu dois générer une lettre de motivation et un sujet d'email pour une candidature.
 
-CANDIDAT : ${userProfile.full_name}, ${userProfile.profession || 'Professionnel'} avec ${cvData.experience_years} ans d'expérience
-COMPÉTENCES : ${cvData.skills.slice(0, 5).join(', ')}
-FORMATION : ${cvData.education}
+CANDIDAT : ${userProfile.full_name}, ${userProfile.profession || 'Professionnel'} avec ${cvData.experience_years || 0} ans d'expérience
+COMPÉTENCES : ${cvData.skills && cvData.skills.length > 0 ? cvData.skills.slice(0, 5).join(', ') : 'Compétences diversifiées'}
+FORMATION : ${cvData.education || 'Formation professionnelle'}
 
 POSTE VISÉ : ${jobOffer.title} chez ${jobOffer.company}
 ${jobOffer.description ? `DESCRIPTION : ${jobOffer.description.substring(0, 300)}` : ''}
@@ -168,11 +168,15 @@ export const generateSimpleCoverLetter = (
   jobOffer: JobOffer,
   cvData: CVData
 ): string => {
+  const skills = cvData.skills && cvData.skills.length > 0 
+    ? cvData.skills.slice(0, 3).join(', ') 
+    : 'diverses compétences techniques';
+    
   return `Madame, Monsieur,
 
 Je me permets de vous adresser ma candidature pour le poste de ${jobOffer.title} au sein de ${jobOffer.company}.
 
-Fort(e) de ${cvData.experience_years} années d'expérience en tant que ${userProfile.profession}, je maîtrise ${cvData.skills.slice(0, 3).join(', ')}. Ma formation en ${cvData.education} m'a permis d'acquérir les compétences techniques nécessaires pour exceller dans ce domaine.
+Fort(e) de ${cvData.experience_years || 0} années d'expérience en tant que ${userProfile.profession || 'professionnel'}, je maîtrise ${skills}. Ma formation en ${cvData.education || 'mon domaine'} m'a permis d'acquérir les compétences techniques nécessaires pour exceller dans ce domaine.
 
 Votre entreprise, reconnue pour ${jobOffer.city}, ${jobOffer.country}, représente pour moi une opportunité idéale de mettre à profit mes compétences et mon expérience.
 
