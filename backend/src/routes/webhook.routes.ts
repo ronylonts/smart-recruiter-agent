@@ -187,13 +187,39 @@ router.post('/new-job', async (req: Request, res: Response) => {
  */
 router.post('/process-job', async (req: Request, res: Response) => {
   const startTime = Date.now();
-  const { user_id, job_id, job_title, company, description, job_url, city, country, contact_email } = req.body;
+  
+  // 🔧 PARSING SÉCURISÉ DES DONNÉES JSON STRINGIFIÉES
+  let { user_id, job_id, job_title, company, description, job_url, city, country, contact_email } = req.body;
+  
+  // Parser 'company' si c'est un JSON stringifié
+  if (typeof company === 'string' && company.startsWith('{')) {
+    try {
+      const parsedCompany = JSON.parse(company);
+      company = parsedCompany.display_name || company;
+      console.log('✅ Company parsé:', company);
+    } catch (e) {
+      console.warn('⚠️ Impossible de parser company:', company);
+    }
+  }
+  
+  // Parser 'city' si c'est un JSON stringifié
+  if (typeof city === 'string' && city.startsWith('{')) {
+    try {
+      const parsedCity = JSON.parse(city);
+      city = parsedCity.display_name || city;
+      console.log('✅ City parsé:', city);
+    } catch (e) {
+      console.warn('⚠️ Impossible de parser city:', city);
+    }
+  }
+  
   let applicationId: string | null = null;
   let finalJobId: string | null = null;
 
   // Log initial
   console.log('\n🔔 Nouveau job reçu:', new Date().toISOString());
   console.log('Body:', JSON.stringify(req.body, null, 2));
+  console.log('📊 Données après parsing:', { user_id, job_title, company, city, job_url });
 
   // 🚀 PRIORITÉ 1 : Répondre IMMÉDIATEMENT à Make.com (200 OK)
   res.status(200).json({
@@ -205,8 +231,8 @@ router.post('/process-job', async (req: Request, res: Response) => {
   // Le traitement continue en arrière-plan (async)
   (async () => {
     await logger.info('job_received', `Nouveau job reçu pour user ${user_id}`, {
-      userId: user_id,
-      jobOfferId: job_id || 'création depuis détails',
+      userId: user_id || null,
+      jobOfferId: job_id || null,
       metadata: { 
         timestamp: new Date().toISOString(),
         has_job_id: !!job_id,
@@ -224,19 +250,38 @@ router.post('/process-job', async (req: Request, res: Response) => {
       return; // Arrêter le traitement
     }
 
+    // Vérifier si les champs sont vraiment remplis (pas vides, pas "0", pas "null", pas "undefined")
+    const isValidString = (str: any) => {
+      return str && typeof str === 'string' && str.trim().length > 0 && 
+             str !== '0' && str !== 'null' && str !== 'undefined';
+    };
+
+    const validJobTitle = isValidString(job_title);
+    const validCompany = isValidString(company);
+    const validJobUrl = isValidString(job_url);
+
     // Vérifier si on a les données minimum
-    const hasValidData = job_id || (job_title && company && job_url);
+    const hasValidData = job_id || (validJobTitle && validCompany && validJobUrl);
     
     if (!hasValidData) {
-      console.error('❌ Données insuffisantes:', { job_id, job_title, company, job_url });
-      console.warn('⚠️ Adzuna a peut-être renvoyé un tableau vide - aucune offre trouvée');
+      console.error('❌ Données insuffisantes ou invalides:', { 
+        job_id, 
+        job_title: job_title || '(empty)', 
+        company: company || '(empty)', 
+        job_url: job_url || '(empty)' 
+      });
+      console.warn('⚠️ Make.com n\'envoie pas les champs correctement - vérifiez le mapping Iterator');
       
-      await logger.error('job_received', 'Paramètres manquants ou Adzuna sans résultats', {
+      await logger.error('job_received', 'Paramètres manquants, vides ou Adzuna sans résultats', {
         userId: user_id,
         metadata: { 
           provided: req.body,
-          error: 'Fournir soit job_id, soit (job_title + company + job_url)',
-          possible_cause: 'Adzuna returned empty results array'
+          error: 'Fournir soit job_id, soit (job_title + company + job_url) avec des valeurs non-vides',
+          possible_causes: [
+            'Adzuna returned empty results array',
+            'Make.com Iterator mapping incorrect (use {{8.value.title}}, not {{8.title}})',
+            'Make.com using Data structure instead of JSON string for body'
+          ]
         }
       }).catch(err => console.error('Log error (non-blocking):', err));
       
@@ -244,21 +289,13 @@ router.post('/process-job', async (req: Request, res: Response) => {
       await createNotification({
         user_id: user_id,
         application_id: null,
-        message: `⚠️ Aucune offre d'emploi trouvée correspondant à votre profil pour cette recherche.`
+        message: `⚠️ Aucune offre d'emploi valide reçue. Vérifiez la configuration Make.com.`
       }).catch(err => console.error('Notification error (non-blocking):', err));
       
       return; // Arrêter le traitement
     }
 
-    // Validation des champs individuels (éviter les valeurs comme "0", null, undefined)
-    if (job_title && (job_title === '0' || job_title === 'null' || job_title === 'undefined')) {
-      console.error('❌ job_title contient une valeur invalide:', job_title);
-      return;
-    }
-    if (company && (company === '0' || company === 'null' || company === 'undefined')) {
-      console.error('❌ company contient une valeur invalide:', company);
-      return;
-    }
+    // Note: La validation des champs est maintenant faite plus haut avec isValidString()
 
     // Étape 1 : Récupérer l'utilisateur avec son premier CV (jointure)
     console.log('\n📋 Récupération utilisateur + CV (jointure)...');
