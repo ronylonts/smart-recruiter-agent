@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { supabase, getUserProfile, getUserCV, getJobOffer, createApplication, createNotification, createOrGetJobOffer } from '../services/supabase.service';
 import { generateCoverLetter } from '../services/groq.service';
 import { sendApplication } from '../services/email.service';
+import { sendApplicationWithResend } from '../services/resend.service';
 import { logger } from '../services/logging.service';
 import { notifyApplicationSent, notifyApplicationFailed, notifyApplicationGenerated } from '../services/notification.service';
 
@@ -562,17 +563,28 @@ router.post('/process-job', async (req: Request, res: Response) => {
       
       // 🛡️ PRIORITÉ 4 : Wrap email dans try/catch pour éviter crash
       try {
-        // Envoyer l'email avec CV + lettre
-        const emailResult = await sendApplication(
-          jobOffer,
-          userData.cvs.file_url,
-          coverLetter.body,
-          {
-            full_name: userData.full_name,
-            email: userData.email
-          },
-          jobOffer.contact_email || undefined // Email du recruteur si disponible
-        );
+        // Envoyer l'email avec CV + lettre via Resend (plus fiable que Gmail SMTP)
+        const emailResult = process.env.RESEND_API_KEY
+          ? await sendApplicationWithResend(
+              jobOffer,
+              userData.cvs.file_url,
+              coverLetter.body,
+              {
+                full_name: userData.full_name,
+                email: userData.email
+              },
+              jobOffer.contact_email || undefined
+            )
+          : await sendApplication(
+              jobOffer,
+              userData.cvs.file_url,
+              coverLetter.body,
+              {
+                full_name: userData.full_name,
+                email: userData.email
+              },
+              jobOffer.contact_email || undefined
+            );
 
         if (emailResult.success) {
           console.log('✅ Email envoyé avec succès');
