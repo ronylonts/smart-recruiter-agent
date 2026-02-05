@@ -431,26 +431,40 @@ router.post('/process-job', async (req: Request, res: Response) => {
       jobOfferId: finalJobId || undefined
     });
 
-    // Étape 3 : Générer la lettre avec Groq (avec retry)
+    // Étape 3 : Générer la lettre avec Groq (avec retry et throttling)
+    
+    // 🛡️ ANTI-RATE-LIMIT : Ajouter un délai aléatoire entre 0-3 secondes
+    // Cela évite que 30 requêtes simultanées surchargent Groq
+    const randomDelay = Math.floor(Math.random() * 3000); // 0-3 secondes
+    console.log(`⏱️ Délai anti-rate-limit: ${randomDelay}ms`);
+    await new Promise(resolve => setTimeout(resolve, randomDelay));
+    
     await logger.info('ai_called', 'Appel Groq pour génération lettre', {
       userId: user_id,
       applicationId: applicationId || undefined,
       jobOfferId: job_id || undefined,
-      metadata: { model: 'llama3-8b-8192' }
+      metadata: { model: 'llama-3.1-8b-instant', delay: randomDelay }
     });
 
-    const maxRetries = 3;
+    const maxRetries = 5; // Augmenté de 3 à 5 pour gérer les 429
     let coverLetterResult;
     let lastError: string = '';
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         if (attempt > 1) {
-          await logger.warning('retry_attempted', `Tentative ${attempt}/${maxRetries}`, {
+          // 🔄 BACKOFF EXPONENTIEL pour les retries
+          const backoffDelay = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // Max 10 secondes
+          console.log(`⏳ Retry ${attempt}/${maxRetries} - Attente ${backoffDelay}ms...`);
+          
+          await logger.warning('retry_attempted', `Tentative ${attempt}/${maxRetries} (backoff: ${backoffDelay}ms)`, {
             userId: user_id,
             applicationId: applicationId || undefined,
-            metadata: { attempt }
+            metadata: { attempt, backoffDelay }
           });
+          
+          // Attendre avant retry
+          await new Promise(resolve => setTimeout(resolve, backoffDelay));
           
           // Update retry count
           await supabase
@@ -480,12 +494,26 @@ router.post('/process-job', async (req: Request, res: Response) => {
         lastError = coverLetterResult.error || 'Erreur inconnue';
       } catch (err: any) {
         lastError = err.message;
-        await logger.error('ai_failed', `Erreur Groq (tentative ${attempt})`, {
-          userId: user_id,
-          applicationId: applicationId || undefined,
-          metadata: { attempt, error: err.message },
-          error: err
-        });
+        
+        // 🎯 GESTION SPÉCIALE POUR RATE LIMIT (429)
+        const isRateLimit = err.message?.includes('429') || err.message?.includes('rate_limit') || err.message?.includes('Rate limit');
+        
+        if (isRateLimit) {
+          console.error(`⚠️ RATE LIMIT GROQ détecté (tentative ${attempt}/${maxRetries})`);
+          await logger.error('ai_failed', `Rate limit Groq (429) - tentative ${attempt}`, {
+            userId: user_id,
+            applicationId: applicationId || undefined,
+            metadata: { attempt, error: err.message, type: 'rate_limit' },
+            error: err
+          });
+        } else {
+          await logger.error('ai_failed', `Erreur Groq (tentative ${attempt})`, {
+            userId: user_id,
+            applicationId: applicationId || undefined,
+            metadata: { attempt, error: err.message },
+            error: err
+          });
+        }
 
         if (attempt === maxRetries) break;
         
