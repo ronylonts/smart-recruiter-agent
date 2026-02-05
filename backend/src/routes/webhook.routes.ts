@@ -216,9 +216,16 @@ router.post('/process-job', async (req: Request, res: Response) => {
   let applicationId: string | null = null;
   let finalJobId: string | null = null;
 
-  // Log initial
+  // Log initial ULTRA-DÉTAILLÉ
   console.log('\n🔔 Nouveau job reçu:', new Date().toISOString());
-  console.log('Body:', JSON.stringify(req.body, null, 2));
+  console.log('📦 Raw Body:', JSON.stringify(req.body, null, 2));
+  console.log('🔍 Type de chaque champ:');
+  console.log('   user_id:', typeof user_id, '→', user_id);
+  console.log('   job_title:', typeof job_title, '→', `"${job_title}"`);
+  console.log('   company:', typeof company, '→', `"${company}"`);
+  console.log('   job_url:', typeof job_url, '→', `"${job_url}"`);
+  console.log('   city:', typeof city, '→', `"${city}"`);
+  console.log('   country:', typeof country, '→', `"${country}"`);
   console.log('📊 Données après parsing:', { user_id, job_title, company, city, job_url });
 
   // 🚀 PRIORITÉ 1 : Répondre IMMÉDIATEMENT à Make.com (200 OK)
