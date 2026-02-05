@@ -81,9 +81,9 @@ IMPORTANT : Réponds UNIQUEMENT avec un JSON valide au format suivant (sans mark
 }`;
 
 
-    // Appel à l'API Groq avec le modèle llama3-8b-8192
+    // Appel à l'API Groq avec le modèle llama-3.1-8b-instant (plus rapide et actuel)
     const completion = await groq.chat.completions.create({
-      model: 'llama3-8b-8192',
+      model: 'llama-3.1-8b-instant',
       messages: [
         {
           role: 'system',
