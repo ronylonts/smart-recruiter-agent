@@ -639,6 +639,15 @@ router.post('/process-job', async (req: Request, res: Response) => {
         } else {
           console.warn('⚠️ Échec envoi email:', emailResult.error);
           
+          // ✅ FIX: Mettre à jour le statut à 'pending' si l'email échoue
+          await supabase
+            .from('applications')
+            .update({ 
+              status: 'pending',
+              error_message: `Échec envoi email: ${emailResult.error}`
+            })
+            .eq('id', applicationId);
+          
           await logger.warning('email_failed', 'Échec envoi email', {
             userId: user_id,
             applicationId: applicationId || undefined,
@@ -656,12 +665,28 @@ router.post('/process-job', async (req: Request, res: Response) => {
         console.error('❌ Erreur lors de l\'envoi email (CATCH):', emailError.message);
         console.warn('⚠️ Le traitement continue malgré l\'erreur email');
         
+        // ✅ FIX: Mettre à jour le statut à 'pending' si une exception survient
+        await supabase
+          .from('applications')
+          .update({ 
+            status: 'pending',
+            error_message: `Exception lors de l'envoi: ${emailError.message}`
+          })
+          .eq('id', applicationId);
+        
         await logger.error('email_failed', 'Erreur envoi email (exception)', {
           userId: user_id,
           applicationId: applicationId || undefined,
           metadata: { error: emailError.message },
           error: emailError
         }).catch(err => console.error('Log error (non-blocking):', err));
+        
+        // Notifier l'utilisateur
+        await createNotification({
+          user_id: user_id,
+          application_id: applicationId,
+          message: `⚠️ Erreur technique lors de l'envoi de l'email pour "${jobOffer.title}". La candidature est en attente.`
+        }).catch(err => console.error('Notification error (non-blocking):', err));
       }
     } else {
       console.log('ℹ️ Envoi automatique désactivé, lettre générée uniquement');
